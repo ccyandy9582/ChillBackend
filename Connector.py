@@ -16,7 +16,3 @@ class Connector():
                                       passwd=self._password,
                                       database=self._database)
         return cnx
-
-    # dotevnPath = join(dirname(__file__), '.env')
-    # load_dotenv(dotevnPath, override=True)
-    # googleMapKey = os.environ.get("googleMapKey")

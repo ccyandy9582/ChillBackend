@@ -4,21 +4,33 @@ import googlemaps.places
 import operator
 import googlemaps
 import datetime
+import requests
 
 class API():
     def __init__(self):
-        api_key = "AIzaSyCrJ9yz3Z5_ob__LeGpJt2tidtzM8UXqxo"
-        self.client = googlemaps.Client(key=api_key)
+        self.api_key = "AIzaSyCrJ9yz3Z5_ob__LeGpJt2tidtzM8UXqxo"
+        self.client = googlemaps.Client(key=self.api_key)
 
     def findLocation(self, place):
         location = self.findAttraction(place)['geometry']['location']
         return location
 
+    def findPhoneNum(self, googleID):
+        parms = (googleID, self.api_key)
+        string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s=name,rating,formatted_phone_number&key=%s" % parms
+        json = requests.get(string).json()
+        print(type(json))
+        print('result' in json.keys())
+        if 'result' in json.keys():
+            return json['result']['formatted_phone_number']
+        else:
+            return ""
+
     def findAttraction(self, placeName, type_='tourist_attraction'):
         result = self.client.places(placeName, type=type_, language='en')['results'][0]
         return result
 
-    def searchNearby(self, type_, lat, lng, radius=8000):
+    def searchNearby(self, type_, lat, lng, radius=15000):
         location = (lat, lng)
         radius = radius   # the unit is meter
         placeType = type_
@@ -30,14 +42,8 @@ class API():
         direction = self.client.directions(origin=startName,
                                             destination=endName,
                                             mode=mode,
+                                            avoid='ferries',
                                             departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
-        if len(direction) < 1:
-            startLocation = self.findLocation(startName)
-            endLocation = self.findLocation(endName)
-            direction = self.client.directions(origin=startLocation,
-                                               destination=endLocation,
-                                               mode=mode,
-                                               departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
         return direction[0]
 
     def findPlaceBy(self, googleID):
@@ -50,7 +56,8 @@ class API():
         # 'geometry/location/lat'
         address = self.client.reverse_geocode(googleID)[0]['formatted_address']
         return self.client.find_place(address, 'textquery', fields=['place_id', 'name', 
-            'geometry/location', 'photos', 'formatted_address', 'rating', 'types'], language='en')['candidates'][0]
+                                     'geometry/location', 'photos', 'formatted_address', 
+                                     'rating', 'types'], language='en')['candidates'][0]
 
     def findRestaurant(self, currentLocationName, transportMode='transit'):
         location = self.findLocation(currentLocationName)
@@ -60,7 +67,7 @@ class API():
             for restaurant in near:
                 restList.append(restaurant)
             # restList.sort(key=operator.attrgetter('rating'))
-            # self.bubbleSort(restList)
+            self.bubbleSort(restList)
         finally:
             return restList
 
@@ -72,7 +79,7 @@ class API():
             for hotel in near:
                 hotelList.append(hotel)
             # hotelList.sort(key=operator.attrgetter('rating'))
-            # self.bubbleSort(hotelList)
+            self.bubbleSort(hotelList)
         finally:
             return hotelList
 
@@ -92,15 +99,20 @@ class API():
         for i in range(n): 
             swapped = False
             for j in range(0, n-i-1): 
-                if arr[j]['rating'] > arr[j+1]['rating'] : 
+                if 'rating' in arr[j] and 'rating' in arr[j+1]:
+                    if arr[j]['rating'] > arr[j+1]['rating'] : 
+                        arr[j], arr[j+1] = arr[j+1], arr[j] 
+                        swapped = True
+                else:
                     arr[j], arr[j+1] = arr[j+1], arr[j] 
                     swapped = True
-            if swapped == False: 
-                break
+                if swapped == False: 
+                    break
         
 
-# api = API()
-# print(api.findAttraction("sunset peak"))
+api = API()
+# a= api.findAttraction("Dotonbori")
+# print(a)
 # route = api.genRoute('Dotonbori', 'Osaka Castle Park', 'transit')
 # print(route[0]['overview_polyline']['points'])
 # location = api.findLocation('Dotonbori japan')
@@ -109,6 +121,6 @@ class API():
 # for attraction in attractions_:
 #     print(attraction['name'])
 # print(api.findHotel('Dotonbori japan', location['lat'], location['lng'], 'transit'))
-# print(api.findPlaceBy('ChIJ7yglkB6oQjQRbTrDqneWpAA'))
+print(api.findPhoneNum('ChIJ7yglkB6oQjQRbTrDqneWpAA'))
 # print(api.findAttraction('taiwan', 'airport'))
 # print(api.genRoute('藝奇新日本料理桃園南華店', 'I Do Motel', 'driving'))

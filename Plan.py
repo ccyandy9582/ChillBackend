@@ -40,6 +40,9 @@ class Point():
         self.duration = int(duration)
         self.type = self.setType(type_)  # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
 
+    def setDuration(self, duration):
+        self.duration = duration
+
     def setDay(self, day):
         self.day = day
 
@@ -84,8 +87,41 @@ class Attraction():
         self.duration = duration
         self.type_ = type_
 
-    def setDuration(self, duration):
-        self.duration = duration
+    def setAttractionID(self, attractionID):
+        self.attractionID = attractionID
+
+    def setGoogleID(self, googleID):
+        self.googleID = googleID
+
+    def setName(self, name):
+        self.name = name
+
+    def setLat(self, lat):
+        self.lat = lat
+
+    def setLng(self, lng):
+        self.lng = lng
+
+    def setImg(self, img):
+        self.img = img
+
+    def setPhone(self, phone):
+        self.phone = phone
+
+    def setAddress(self, address):
+        self.address = address
+
+    def setBusinessHour(self, businessHour):
+        self.businessHour = businessHour
+
+    def setRating(self, rating):
+        self.rating = rating
+
+    def setCountry(self, country):
+        self.country = country
+
+    def setType(self, type_):
+        self.type_ = type_
 
     def __str__(self):
         type_ = ""
