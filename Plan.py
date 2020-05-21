@@ -16,9 +16,8 @@ class Plan():
         self.state = state
 
     def setTransport(self, useTransport):
-        if useTransport is 0:
-            mode = "transit"
-        else:
+        mode = "transit"
+        if useTransport is not 0:
             mode = "driving"
         return mode
 
@@ -48,6 +47,9 @@ class Point():
 
     def setAttractionID(self, attractionID):
         self.attractionID = attractionID
+
+    def setGoogleID(self, googleID):
+        self.googleID = googleID
 
     def setStartTime(self, startTime):
         self.startTime = startTime
@@ -87,6 +89,44 @@ class Attraction():
         self.duration = duration
         self.type_ = type_
 
+    # def differentWith(self, attraction):
+    #     different = False
+
+    #     if self.googleID != attraction.googleID:
+    #         different = True
+
+    #     if self.name != attraction.name:
+    #         different = True
+
+    #     if self.lat != attraction.lat:
+    #         different = True
+            
+    #     if self.lng != attraction.lng:
+    #         different = True
+
+    #     if self.img != attraction.img:
+    #         different = True
+
+    #     if self.phone != attraction.phone:
+    #         different = True
+
+    #     if self.address != attraction.address:
+    #         different = True
+
+    #     if self.businessHour != attraction.businessHour:
+    #         different = True
+
+    #     if self.rating != attraction.rating:
+    #         different = True
+
+    #     if self.country != attraction.country:
+    #         different = True
+
+    #     if self.duration != attraction.duration:
+    #         different = True
+
+    #     return different
+
     def setAttractionID(self, attractionID):
         self.attractionID = attractionID
 
@@ -120,6 +160,9 @@ class Attraction():
     def setCountry(self, country):
         self.country = country
 
+    def setDuration(self, duration):
+        self.duration = duration
+
     def setType(self, type_):
         self.type_ = type_
 
@@ -127,11 +170,14 @@ class Attraction():
         type_ = ""
         for _type in self.type_:
             type_ = type_ + " " + _type
+        img = self.img
+        if self.img == None:
+            img = "None"
         return "attractionID: "+str(self.attractionID)+\
                ", googleID: "+self.googleID+\
                ", name: "+self.name+\
                ", location: { "+str(self.lat)+", "+str(self.lng)+" }"+\
-               ", img: "+self.img+\
+               ", img: "+img+\
                ", phone: "+self.phone+\
                ", address: "+self.address+\
                ", business hour: "+self.businessHour+\

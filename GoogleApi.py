@@ -2,33 +2,50 @@ import googlemaps
 import googlemaps.directions
 import googlemaps.places
 import operator
-import googlemaps
 import datetime
 import requests
 
 class API():
-    def __init__(self):
+    def __init__(self, transportMode=str):
         self.api_key = "AIzaSyCrJ9yz3Z5_ob__LeGpJt2tidtzM8UXqxo"
         self.client = googlemaps.Client(key=self.api_key)
+        self.transportMode = transportMode
 
     def findLocation(self, place):
         location = self.findAttraction(place)['geometry']['location']
         return location
 
     def findPhoneNum(self, googleID):
-        parms = (googleID, self.api_key)
-        string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s=name,rating,formatted_phone_number&key=%s" % parms
-        json = requests.get(string).json()
-        print(type(json))
-        print('result' in json.keys())
-        if 'result' in json.keys():
-            return json['result']['formatted_phone_number']
-        else:
+        try:
+            parms = (googleID, self.api_key)
+            string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s&language=en&fields=name,rating,international_phone_number&key=%s" % parms
+            json = requests.get(string).json()
+            phone = ""
+            if json['status'] == 'OK':
+                if 'international_phone_number' in json['result'].keys():
+                    phone = json['result']['international_phone_number']
+            return phone
+        except KeyError as e:
+            print(e.args[0])
             return ""
 
     def findAttraction(self, placeName, type_='tourist_attraction'):
-        result = self.client.places(placeName, type=type_, language='en')['results'][0]
-        return result
+        result = self.client.places(placeName, type=type_, language='en')
+        info = dict
+        if result['status'] == 'OK':
+            info = result['results'][0]
+        else:
+            info = self.findAttraction(placeName, "")
+        return info
+
+    def findPlaceID(self, name):
+        parms = (name, self.api_key)
+        string = 'https://maps.googleapis.com/maps/api/geocode/json?address=%s&key=%s' % parms
+        json = requests.get(string).json()
+        placeid = ""
+        if json['status'] == 'OK':
+            placeid = json['results'][0]['place_id']
+        return placeid
 
     def searchNearby(self, type_, lat, lng, radius=15000):
         location = (lat, lng)
@@ -37,11 +54,11 @@ class API():
         places = self.client.places_nearby(location, radius, type=placeType, language='en')
         return places['results']
 
-    def genRoute(self, startName, endName, mode='transit'):
+    def genRoute(self, startName, endName):
         # there are 4 mode: driving, walking, bicycling, transit
         direction = self.client.directions(origin=startName,
                                             destination=endName,
-                                            mode=mode,
+                                            mode=self.transportMode,
                                             avoid='ferries',
                                             departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
         return direction[0]
@@ -54,12 +71,12 @@ class API():
         # 'geometry/viewport/northeast', 'geometry/viewport/southwest/lat', 'plus_code', 'rating', 
         # 'formatted_address', 'opening_hours', 'place_id', 'geometry', 'user_ratings_total', 
         # 'geometry/location/lat'
-        address = self.client.reverse_geocode(googleID)[0]['formatted_address']
+        address = self.client.reverse_geocode(self.findLocation(googleID))[0]['formatted_address']
         return self.client.find_place(address, 'textquery', fields=['place_id', 'name', 
                                      'geometry/location', 'photos', 'formatted_address', 
-                                     'rating', 'types'], language='en')['candidates'][0]
+                                     'rating', 'types', 'photos'], language='en')['candidates'][0]
 
-    def findRestaurant(self, currentLocationName, transportMode='transit'):
+    def findRestaurant(self, currentLocationName):
         location = self.findLocation(currentLocationName)
         near = self.searchNearby('restaurant', location['lat'], location['lng'])
         restList = []
@@ -71,7 +88,7 @@ class API():
         finally:
             return restList
 
-    def findHotel(self, currentLocationName, transportMode='transit'):
+    def findHotel(self, currentLocationName):
         location = self.findLocation(currentLocationName)
         near = self.searchNearby('lodging', location['lat'], location['lng'])
         hotelList = []
@@ -80,16 +97,17 @@ class API():
                 hotelList.append(hotel)
             # hotelList.sort(key=operator.attrgetter('rating'))
             self.bubbleSort(hotelList)
-        finally:
             return hotelList
+        finally:
+            pass
 
     def findNextAttraction(self, currentLocation, currentLat, currentLng, 
-                           type_= 'tourist_attraction', transportMode='transit'):
+                           type_= 'tourist_attraction'):
         near = self.searchNearby(type_, currentLat, currentLng)
         nextList = []
         for attraction in near:
             nextList.append(attraction)
-        if type_ is 'tourist_attraction':
+        if type_ == 'tourist_attraction':
             self.bubbleSort(nextList)
         return nextList
 
@@ -106,12 +124,12 @@ class API():
                 else:
                     arr[j], arr[j+1] = arr[j+1], arr[j] 
                     swapped = True
-                if swapped == False: 
+                if swapped is False: 
                     break
         
 
-api = API()
-# a= api.findAttraction("Dotonbori")
+# api = API()
+# a= api.findAttraction("The Harbourview")
 # print(a)
 # route = api.genRoute('Dotonbori', 'Osaka Castle Park', 'transit')
 # print(route[0]['overview_polyline']['points'])
@@ -121,6 +139,6 @@ api = API()
 # for attraction in attractions_:
 #     print(attraction['name'])
 # print(api.findHotel('Dotonbori japan', location['lat'], location['lng'], 'transit'))
-print(api.findPhoneNum('ChIJ7yglkB6oQjQRbTrDqneWpAA'))
+# print(api.findPhoneNum('ChIJ7yglkB6oQjQRbTrDqneWpAA'))
 # print(api.findAttraction('taiwan', 'airport'))
 # print(api.genRoute('藝奇新日本料理桃園南華店', 'I Do Motel', 'driving'))

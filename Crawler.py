@@ -17,7 +17,7 @@ class Crawler():
     # to search the duration time by tripadvisor
     def _tripadvisorRecommandDuration(self):
         try:
-            tripDuration = ""
+            tripDuration = 2
             self._driver.get("https://www.google.com.hk/")
             time.sleep(1)
             searchBar = self._driver.find_element_by_name('q')
@@ -37,28 +37,29 @@ class Crawler():
                         "attractions-attraction-detail-about-card-AboutSection__sectionWrapper--3PMQg")
                     for row in div:
                         if row.text != 'Improve This Listing':
-                            timeRange = re.search(
-                                r'([0-9]-[0-9])', row.text).string
-                            if timeRange:
-                                try:
+                            temp = re.search(r'([0-9]-[0-9])', row.text)
+                            timeRange = ""
+                            if temp != None:
+                                timeRange = temp.string
+                            if timeRange != "":
+                                if timeRange[7] is int and timeRange[9] is int:
                                     tripDuration = (
-                                        int(timeRange[7])+int(timeRange[9]))/2
-                                    break
-                                except:
+                                        int(timeRange[7])+int(timeRange[9]))/2                                    
+                                elif timeRange[-7] is int and timeRange[-9] is int:
                                     tripDuration = (
                                         int(timeRange[-7])+int(timeRange[-9]))/2
                     break
-        finally:
             # self._driver.execute_script('''tab.close()''')
             self._driver.switch_to.window(
                 self._driver.window_handles[-1])
             self._driver.close()
             return str(tripDuration)
+        finally:
+            pass
 
     # to search the duration time by google
     def _googleRecommandDuration(self):
         try:
-            googleDuration = ""
             self._driver.get("https://www.google.com.hk/")
             time.sleep(1)
             searchBar = self._driver.find_element_by_name('q')
@@ -68,8 +69,11 @@ class Crawler():
             googleDuration = self._driver.find_element_by_css_selector(
                 '.UYKlhc b').text
             googleDuration = googleDuration.split()[0]
-        finally:
             return str(googleDuration)
+        except NoSuchElementException:
+            print("google dose not recommand duration")
+        finally:
+            return ""
 
     # if cannot locate on google, then find on tripadvisor
     # if neither, apply the default duration time
@@ -77,13 +81,13 @@ class Crawler():
         self._driver = selenium.webdriver.Chrome()
         self.attraction = attraction
         duration = self._googleRecommandDuration()
-        if duration is not "":
+        if duration != "":
             self.duration = duration
-        elif duration is "":
+        elif duration == "":
             duration = self._tripadvisorRecommandDuration()
             self.duration = duration
 
-        if duration is "":
+        if duration == "":
             self.duration = "2"
 
         self._driver.switch_to.window(
@@ -94,8 +98,7 @@ class Crawler():
             splited = self.duration.split('-')
             duration = (int(splited[0])+int(splited[1]))*1800   # 3600/2
             if duration > 3600*8:
-                duration = 2*3600
-            return duration
+                self.duration = 2*3600
         else:
             # return the duration of seconds
             if float(self.duration) > 8 and float(self.duration) <= 120:

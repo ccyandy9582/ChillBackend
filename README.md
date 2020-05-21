@@ -1,7 +1,9 @@
 # ChillBackend
 
-* the backend for the HO_CHILL_TRIP project  
+* The backend for the HO_CHILL_TRIP project  
 * Communicate with front-end through database  
+* Responsible to generate the plan  
+* Responsible to send the confirmation mail to newbie  
 ________________________________________________________________________________________________________________
 ># Rundown  
 
@@ -35,12 +37,13 @@ ________________________________________________________________________________
 ________________________________________________________________________________________________________________
 >## TODO / BUGS  
 ### IMPORTANT  
-- [ ] 1. don't insert hotel with placeOrder: 1  
+- [x] 1. don't insert hotel with placeOrder: 1  
 - [x] 2. fix place duplicate (remember set bigger radius)  
 - [ ] 3. generate plan (not 乜都冇plan)  
-- [ ] 4. add driving route  
+- [x] 4. add driving route  
+- [x] 5. update existing attraction
   
 ### LESS IMPORTANT  
-- [ ] 5. use auto increment in attraction table  
-- [ ] 6. other冇咁重要嘅 backend, like send email/ delete useless things  
+- [x] 6. use auto increment in attraction table  
+- [ ] 7. other冇咁重要嘅 backend, like send email/ delete useless things  
 ________________________________________________________________________________________________________________
