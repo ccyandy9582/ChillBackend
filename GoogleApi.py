@@ -6,7 +6,7 @@ import datetime
 import requests
 
 class API():
-    def __init__(self, transportMode=str):
+    def __init__(self, transportMode='driving'):
         self.api_key = "AIzaSyCrJ9yz3Z5_ob__LeGpJt2tidtzM8UXqxo"
         self.client = googlemaps.Client(key=self.api_key)
         self.transportMode = transportMode
@@ -56,12 +56,23 @@ class API():
 
     def genRoute(self, startName, endName):
         # there are 4 mode: driving, walking, bicycling, transit
-        direction = self.client.directions(origin=startName,
-                                            destination=endName,
-                                            mode=self.transportMode,
-                                            avoid='ferries',
-                                            departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
-        return direction[0]
+        try:
+            direction = self.client.directions(origin=startName,
+                                                destination=endName,
+                                                mode=self.transportMode,
+                                                departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
+            return direction[0]
+        except:
+            return ""
+
+    def findNameBy(self, googleID):
+        parms = (googleID, self.api_key)
+        string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s&language=en&fields=name,rating,international_phone_number&key=%s" % parms
+        json = requests.get(string).json()
+        name = ""
+        if json['status'] == 'OK':
+            name = placeid = json['result']['name']
+        return name
 
     def findPlaceBy(self, googleID):
         # Valid values for the `fields` param for `find_place` are 'geometry/viewport/southwest', 
@@ -71,10 +82,13 @@ class API():
         # 'geometry/viewport/northeast', 'geometry/viewport/southwest/lat', 'plus_code', 'rating', 
         # 'formatted_address', 'opening_hours', 'place_id', 'geometry', 'user_ratings_total', 
         # 'geometry/location/lat'
-        address = self.client.reverse_geocode(self.findLocation(googleID))[0]['formatted_address']
-        return self.client.find_place(address, 'textquery', fields=['place_id', 'name', 
-                                     'geometry/location', 'photos', 'formatted_address', 
-                                     'rating', 'types', 'photos'], language='en')['candidates'][0]
+        # address = self.client.reverse_geocode(self.findLocation(googleID))[0]['formatted_address']
+        name = self.findNameBy(googleID)
+        fields = ['place_id', 'photos', 'name', 'geometry/location', 'formatted_address', 'rating', 
+                  'types']
+        return self.client.find_place(name, 'textquery', fields=fields, language='en')['candidates'][0]
+        # a = self.client.find_place(phoneNum, 'phonenumber', fields = fields, language='en')['candidates'][0]
+        # return self.client.find_place(phoneNum, 'phonenumber', fields = fields, language='en')['candidates'][0]
 
     def findRestaurant(self, currentLocationName):
         location = self.findLocation(currentLocationName)
@@ -128,11 +142,12 @@ class API():
                     break
         
 
-# api = API()
+# api = API("transit")
+# print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
 # a= api.findAttraction("The Harbourview")
 # print(a)
-# route = api.genRoute('Dotonbori', 'Osaka Castle Park', 'transit')
-# print(route[0]['overview_polyline']['points'])
+# route = api.genRoute('Dotonbori', 'Osaka Castle Park')
+# print(route['overview_polyline']['points'])
 # location = api.findLocation('Dotonbori japan')
 # print("lat: %f, lng: %f" % (location['lat'], location['lng']))
 # attractions_ = api.searchNearby('tourist_attraction', lat_, lng_)

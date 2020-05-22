@@ -3,7 +3,6 @@ import time
 import re
 from selenium.webdriver.common.keys import Keys
 import mysql.connector
-from Plan import Attraction
 
 # this class reponse to find the duration time of attraction
 # the default duration time is 2 hours

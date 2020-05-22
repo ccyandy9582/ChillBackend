@@ -1,6 +1,5 @@
 import datetime
 
-
 class Plan():
     def __init__(self, planID, country, useTransport, startDate, endDate, state):
         self.planID = int(planID)
@@ -29,7 +28,7 @@ class Plan():
 
 
 class Point():
-    def __init__(self, day, attractionID, googleID, name, placeOrder, duration, startTime, type_):
+    def __init__(self, day, attractionID, googleID, name, placeOrder, duration, startTime, type_, addBy=1):
         self.day = int(day)
         self.attractionID = int(attractionID)
         self.googleID = googleID
@@ -38,6 +37,7 @@ class Point():
         self.startTime = startTime
         self.duration = int(duration)
         self.type = self.setType(type_)  # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
+        self.addBy = addBy
 
     def setDuration(self, duration):
         self.duration = duration
@@ -74,7 +74,7 @@ class Point():
 
 class Attraction():
     def __init__(self, attractionID, googleID, name, lat, lng, img, address, 
-                 rating, country, duration, type_, phone='', businessHour=''):
+                 rating, country, duration, type_=list, phone='', businessHour=''):
         self.attractionID = attractionID
         self.googleID = googleID
         self.name = name

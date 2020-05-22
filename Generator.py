@@ -1,13 +1,9 @@
-import Crawler
-import GoogleApi
-from Connector import Connector
-import Plan
+import time
 import datetime
 import mysql.connector
-import operator
-import random
-import time
-
+import Crawler
+import GoogleApi
+import Plan
 
 crawler = Crawler.Crawler()     # to find the duration time on internet
 restList = []                   # to store the restaurants
@@ -37,7 +33,12 @@ def initialDay1(day, routeList, plan, *airport):
         attraction = api.findAttraction(country)
     else:
         attraction = api.findAttraction(country, 'airport')
-    duration = crawler.crawlDruation(attraction['name'])
+    duration = 0
+    for a in attractionListFromDB:
+        if attraction['name'] == a.name:
+            duration = a.duration
+    if duration == 0:
+        duration = crawler.crawlDruation(attraction['name'])
     point = Plan.Point(day, currentAttractionID()+1, attraction['place_id'], 
                         attraction['name'], len(routeList)+1, duration, 
                         startTime, 0)
@@ -51,8 +52,10 @@ def initialDay(day, endOfday, plan):
     routeList = []
     point = endOfday
     point.setPlaceOrder(len(routeList)+1)
-    point.setStartTime(datetime.datetime(plan.startDate.year,plan.startDate.month, 
-                       plan.startDate.day+day-1, hour=9, minute=0))
+    startDate = datetime.datetime(plan.startDate.year, plan.startDate.month, 
+                                  plan.startDate.day, hour=9)
+    startDate = startDate + datetime.timedelta(days = day-1)
+    point.setStartTime(startDate)
     point.setType(1)
     point.setDay(day)
     routeList.append(point)
@@ -65,8 +68,8 @@ def initialDay(day, endOfday, plan):
 # and the check data come from api.findPhoneNum and api.findPlaceBy
 def checkAttraction(attraction = Plan.Attraction):
     change = False
-    checker = api.findPlaceBy(attraction.name)
     googleID = api.findPlaceID(attraction.name)
+    checker = api.findPlaceBy(googleID)
 
     if attraction.googleID != googleID:
         attraction.setGoogleID(googleID)
@@ -84,7 +87,7 @@ def checkAttraction(attraction = Plan.Attraction):
         attraction.setImg(checker['photos'][0]['photo_reference'])
         change = True
     else:
-        attraction.setImg(None)
+        attraction.setImg("")
 
     # keyword 'is' is compare the ram address same or not
     # '==' is compare the value same or not
@@ -101,11 +104,15 @@ def checkAttraction(attraction = Plan.Attraction):
         attraction.setDuration(crawler.crawlDruation(attraction.name))
         change = True
 
+    if attraction.type_ != checker['types']:
+        attraction.setType(checker['types'])
+        change = True
+
     return {'attraction': attraction, 'change': change}
 
 # check the point information is correct
 # assume the name is 100% correct
-def checkPoint(point):
+def checkPoint(point = Plan.Point):
     if 'from' not in point.name.split():
         query = 'select * from attraction where name = "%s"' % (point.name)
         cursor.execute(query)
@@ -120,6 +127,7 @@ def checkPoint(point):
                 point.setGoogleID(placeID)
     return point
 
+# insert the new attraction into attraction table
 def insertInAttraction(attraction, plan):    
     # to convert the country name to country ID
     query = "select countryID from country where EN = '%s'" % (plan.country)
@@ -140,6 +148,10 @@ def insertInAttraction(attraction, plan):
     cursor.execute(query)
     attractionID = cursor.fetchall()[0][0]
     attraction.setAttractionID(attractionID)
+    # to clear up the exist type
+    query = 'delete from attraction_type where id = %d' % (attraction.attractionID)
+    cursor.execute(query)
+    connection.commit()
     for type_ in attraction.type_:
         query = 'insert into attraction_type values (%d, "%s");' % (
             attractionID, type_)
@@ -153,6 +165,7 @@ def updateAttraction(attractionList, plan):
     try:
         for attraction in attractionList: 
             attraction = checkAttraction(attraction)['attraction']
+            print(attraction)
             # double check the attraction
             query = "select * from attraction where googleId = '%s'" % (attraction.googleID)
             cursor.execute(query)
@@ -164,7 +177,6 @@ def updateAttraction(attractionList, plan):
             # print(temp2 == None)
             if len(temp1) == 0 and len(temp2) == 0:
                 insertInAttraction(attraction, plan)
-                # continue
             else:
                 print("already exist: attractionID: "+str(attraction.name))
         print('all attraction synchronized')
@@ -213,6 +225,8 @@ def insertIntoRoute(point, route_, route, plan):
         route.append(route_)
         route.append(point)
         checkExist(point, plan)
+    else:
+        print("same point is not accept")
     return route
 
 # to find the restaurant, avalible in the upcoming update
@@ -347,41 +361,45 @@ def setStartTime(routeList):
 
 # to find the route between current point and the next point
 # the nextPoint can be attraction or nextPoint
-def findRouteBetween(day, nextPoint, routeList, plan, *last, type_=1):
+def findRouteBetween(day=int, nextPoint=dict, routeList=list, plan=Plan.Plan, *last, type_=1):
     try:
         tempRoute = api.genRoute(routeList[-1].name, nextPoint['name'])
-        name = "from %s transport to %s" % (routeList[-1].name, nextPoint['name'])
-        startTime = setStartTime(routeList)
+        if tempRoute != "":
+            name = "from %s transport to %s" % (routeList[-1].name, nextPoint['name'])
+            startTime = setStartTime(routeList)
 
-        route = Plan.Route(routeList[0].day, name, len(routeList)+1, 
-                            tempRoute['legs'][0]['duration']['value'], 
-                            startTime, tempRoute['overview_polyline']['points'])
+            route = Plan.Route(routeList[0].day, name, len(routeList)+1, 
+                                tempRoute['legs'][0]['duration']['value'], 
+                                startTime, tempRoute['overview_polyline']['points'])
 
-        startTime = route.startTime + datetime.timedelta(seconds=route.duration)
+            startTime = route.startTime + datetime.timedelta(seconds=route.duration)
 
-        point = Plan.Point(routeList[0].day, currentAttractionID()+1, nextPoint['googleID'], 
-                        nextPoint['name'], len(routeList)+2, nextPoint['duration'], 
-                        startTime, type_)
-        if len(last) != 0:
-            point = routeList[0]
-            point.setStartTime(startTime)
-            point.setType(3)
-            # point.setPlaceOrder(len(routeList)+2)
-        return {'point': point, 'route': route}
-    except:
-        error = True
-        blockPoint.append(nextPoint)
-        if len(routeList) <= 3:
-            return {'point':routeList[-1], 'route':routeList[-2]}
+            point = Plan.Point(routeList[0].day, currentAttractionID()+1, nextPoint['googleID'], 
+                            nextPoint['name'], len(routeList)+2, nextPoint['duration'], 
+                            startTime, type_)
+            if len(last) != 0:
+                point = routeList[0]
+                point.setStartTime(startTime)
+                point.setType(3)
+                # point.setPlaceOrder(len(routeList)+2)
+            return {'point': point, 'route': route}
         else:
+            raise IndexError
+    except IndexError as e:
+        blockPoint.append(nextPoint)
+        if len(routeList) == 1:
+            return {'point':routeList[-1], 'route':""}
+        elif len(routeList) >= 3:
             return {'point':routeList[-1], 'route':routeList[-2]}
 
 # to catch the point in the day until the time is over 1830
 def loopPointInDay(day, startTime, plan, routeList):
     havelunch = False
+    startDate = datetime.datetime(plan.startDate.year, plan.startDate.month, 
+                                  plan.startDate.day, hour=18, minute=30)
+    startDate = startDate + datetime.timedelta(days = day-1)
     # find gen the schedule before 1830, after that go dinner and return to hotel
-    while startTime < datetime.datetime(plan.startDate.year, plan.startDate.month, 
-                                        plan.startDate.day+day-1, hour = 19, minute = 00):
+    while startTime < startDate:
         times = 1
         while True:
             nextPoint_ = nextPoint(routeList[-1].name, plan.country, routeList, times=times)
@@ -429,7 +447,9 @@ def getAllAttraction():
         if tempAtt['change']:
             attraction_ = tempAtt['attraction']
             updateDBAttraction(attraction_)
-        print("    updated attraction: ", attraction_.name)
+            print("    updated attraction: ", attraction_.name)
+        else:
+            print("    no need to update: ", attraction_.name)
         attractionListFromDB.append(attraction_)
 
 # update the attraction information in db
@@ -564,7 +584,7 @@ def updatePlanContent(routeList, attractionList, plan):
                         '%d, %d, %d, %d, "%s", %d, %d, "%s")' % (plan.planID, 
                         i.day, i.placeOrder, i.duration, 
                         i.startTime.strftime("%H:%M"), i.type, 1, i.route)
-            print(query)
+            print("    ",query)
             cursor.execute(query)
         connection.commit()
     except mysql.connector.Error as error:
@@ -580,8 +600,9 @@ while True:
             password="ChillPa$$w0rd",
             database="hochilltrip",
             buffered=True)
-        cursor = connection.cursor()    # create the cursor for database
-        query = "select * from plan where state = 1 or state = 3"
+        cursor = connection.cursor()                # create the cursor for database
+        # query = "select * from plan where state = 1 or state = 3"
+        query = "select * from plan where planID = 11"
         cursor.execute(query)
         toDoPlan = cursor.fetchall()
         print("waiting for create plan...")
@@ -698,7 +719,7 @@ while True:
                 query = "UPDATE plan SET state = %d WHERE planID = %d"%(plan_.state, plan_.planID)
                 cursor.execute(query)
                 connection.commit()
-                print("plan %s finished") % (str(plan_.planID))
+                print("plan %d finished" % (plan_.planID))
         cursor.close()
         connection.close()
     finally:
