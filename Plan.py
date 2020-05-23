@@ -15,9 +15,9 @@ class Plan():
         self.state = state
 
     def setTransport(self, useTransport):
-        mode = "transit"
-        if useTransport is not 0:
-            mode = "driving"
+        mode = "driving"
+        if useTransport == 1:
+            mode = "transit"
         return mode
 
     def __str__(self):
@@ -36,7 +36,7 @@ class Point():
         self.placeOrder = int(placeOrder)
         self.startTime = startTime
         self.duration = int(duration)
-        self.type = self.setType(type_)  # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
+        self.setType(type_)  # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
         self.addBy = addBy
 
     def setDuration(self, duration):

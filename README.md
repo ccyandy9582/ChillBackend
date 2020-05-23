@@ -39,13 +39,14 @@ ________________________________________________________________________________
 ### IMPORTANT  
 - [x] 1. don't insert hotel with placeOrder: 1  
 - [x] 2. fix place duplicate (remember set bigger radius)  
-- [ ] 3. generate plan (nothing)  
-- [ ] 4. generate plan (re-gen)  
+- [x] 3. generate plan (nothing)  
+- [x] 4. generate plan (re-gen)  
 - [ ] 5. generate plan (must-go place(s) included)  
 - [x] 6. add driving route  
 - [x] 7. update existing attraction
   
 ### LESS IMPORTANT  
-- [x] 8. use auto increment in attraction table  
-- [ ] 9. other冇咁重要嘅 backend, like send email/ delete useless things  
+- [x] 1. use auto increment in attraction table  
+- [ ] 2. other冇咁重要嘅 backend, like send email/ delete useless things  
+- [x] 3. duration of hotel should be 0
 ________________________________________________________________________________________________________________

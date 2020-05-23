@@ -53,8 +53,8 @@ class Crawler():
                 self._driver.window_handles[-1])
             self._driver.close()
             return str(tripDuration)
-        finally:
-            pass
+        except:
+            return 2
 
     # to search the duration time by google
     def _googleRecommandDuration(self):
@@ -69,15 +69,13 @@ class Crawler():
                 '.UYKlhc b').text
             googleDuration = googleDuration.split()[0]
             return str(googleDuration)
-        except NoSuchElementException:
-            print("google dose not recommand duration")
-        finally:
+        except:
             return ""
 
     # if cannot locate on google, then find on tripadvisor
     # if neither, apply the default duration time
     def crawlDruation(self, attraction):
-        self._driver = selenium.webdriver.Chrome()
+        self._driver = selenium.webdriver.Chrome('./env_dir/bin/chromedriver')
         self.attraction = attraction
         duration = self._googleRecommandDuration()
         if duration != "":
@@ -132,3 +130,7 @@ class Crawler():
 #         connection.commit()
 # cursor.close()
 # connection.close()
+
+# test
+# crawler = Crawler()
+# print(crawler.crawlDruation("the peak tram"))

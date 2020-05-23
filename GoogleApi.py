@@ -6,8 +6,8 @@ import datetime
 import requests
 
 class API():
-    def __init__(self, transportMode='driving'):
-        self.api_key = "AIzaSyCrJ9yz3Z5_ob__LeGpJt2tidtzM8UXqxo"
+    def __init__(self, transportMode):
+        self.api_key = "AIzaSyBSBBEmsLVTTCM3vXMV6aUB6uw50F4BPQk"
         self.client = googlemaps.Client(key=self.api_key)
         self.transportMode = transportMode
 
@@ -39,8 +39,9 @@ class API():
         return info
 
     def findPlaceID(self, name):
-        parms = (name, self.api_key)
-        string = 'https://maps.googleapis.com/maps/api/geocode/json?address=%s&key=%s' % parms
+        location = self.findLocation(name)
+        parms = (location['lat'], location['lng'], self.api_key)
+        string = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&key=%s' % parms
         json = requests.get(string).json()
         placeid = ""
         if json['status'] == 'OK':
@@ -54,14 +55,24 @@ class API():
         places = self.client.places_nearby(location, radius, type=placeType, language='en')
         return places['results']
 
+    # TODO: need to add starttime in parms
     def genRoute(self, startName, endName):
         # there are 4 mode: driving, walking, bicycling, transit
         try:
-            direction = self.client.directions(origin=startName,
-                                                destination=endName,
-                                                mode=self.transportMode,
-                                                departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
-            return direction[0]
+            startID = self.findPlaceID(startName)
+            endID = self.findPlaceID(endName)
+            string = "https://maps.googleapis.com/maps/api/directions/json?"+\
+                    "origin=place_id:%s&destination=place_id:%s&key=%s" % (startID, endID, self.api_key)
+            json = requests.get(string).json()
+            direction = ""
+            if json['status'] == 'OK':
+                direction = json['routes'][0]
+            return direction
+            # direction = self.client.directions(origin=startName,
+            #                                     destination=endName,
+            #                                     mode=self.transportMode,
+            #                                     departure_time=datetime.datetime(datetime.date.today().year, datetime.date.today().month, datetime.date.today().day, hour = 14, minute = 00))
+            # return direction[0] 
         except:
             return ""
 
@@ -71,7 +82,7 @@ class API():
         json = requests.get(string).json()
         name = ""
         if json['status'] == 'OK':
-            name = placeid = json['result']['name']
+            name = json['result']['name']
         return name
 
     def findPlaceBy(self, googleID):
@@ -84,9 +95,14 @@ class API():
         # 'geometry/location/lat'
         # address = self.client.reverse_geocode(self.findLocation(googleID))[0]['formatted_address']
         name = self.findNameBy(googleID)
-        fields = ['place_id', 'photos', 'name', 'geometry/location', 'formatted_address', 'rating', 
-                  'types']
-        return self.client.find_place(name, 'textquery', fields=fields, language='en')['candidates'][0]
+        fields = 'place_id, photos, name, geometry/location, formatted_address, rating, types'
+        parms = (name, fields, self.api_key)
+        string = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=%s&inputtype=textquery&fields=%s&language=en&key=%s' % parms
+        json = requests.get(string).json()
+        info = ""
+        if json['status'] == 'OK':
+            info = json['candidates'][0]
+        return info
         # a = self.client.find_place(phoneNum, 'phonenumber', fields = fields, language='en')['candidates'][0]
         # return self.client.find_place(phoneNum, 'phonenumber', fields = fields, language='en')['candidates'][0]
 
@@ -142,11 +158,14 @@ class API():
                     break
         
 
-# api = API("transit")
-# print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
+api = API('driving')
+# print(api.findHotel('愉景灣觀光馬車'))
+print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
+# print(api.findPlaceID('Hong Kong Disneyland'))
 # a= api.findAttraction("The Harbourview")
 # print(a)
-# route = api.genRoute('Dotonbori', 'Osaka Castle Park')
+# route = api.genRoute('Hong Kong International Airport', 'Grand Hall of Ten Thousand Buddhas, Po Lin Monastery')
+# print(route['legs'][0]['duration']['value'])
 # print(route['overview_polyline']['points'])
 # location = api.findLocation('Dotonbori japan')
 # print("lat: %f, lng: %f" % (location['lat'], location['lng']))
