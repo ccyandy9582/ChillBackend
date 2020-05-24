@@ -70,7 +70,6 @@ def checkAttraction(attraction = Plan.Attraction):
     change = False
     googleID = api.findPlaceID(attraction.name)
     checker = api.findPlaceBy(googleID)
-    
 
     if attraction.googleID != googleID:
         attraction.setGoogleID(googleID)
@@ -100,11 +99,11 @@ def checkAttraction(attraction = Plan.Attraction):
         attraction.setAddress(checker['formatted_address'])
         change = True
 
-    if 'lodging' in api.findPlaceBy(googleID) and attraction.duration != 0:
+    if 'lodging' in checker['types']:
         attraction.setDuration(0)
         change = True
     elif (attraction.duration == None or attraction.duration < 900 or 
-        attraction.duration > 28800):
+          attraction.duration > 28800):
         attraction.setDuration(crawler.crawlDruation(attraction.name))
         change = True
 
@@ -195,16 +194,6 @@ def findCountryName(countryID):
     countryName = cursor.fetchone()
     return countryName[0]
 
-# to check the list included None of data or not
-def replaceNone(list):
-    list_ = []
-    for index in range(len(list)):
-        if list[index] is None:
-            list_.append("")
-        else:
-            list_.append(list[index])
-    return list_
-
 # to find the duration time of the attraction point
 def findDuration(placeName, countryName):
     query = 'select duration from attraction where name = "%s"' % (placeName)
@@ -215,13 +204,6 @@ def findDuration(placeName, countryName):
         return duration
     else:
         return crawler.crawlDruation(placeName + countryName)
-
-# to check the replicate point when the route is required to re-generate
-def isReplicate(attraction, originalList):
-    for a in originalList:
-        if a.googleID is attraction['googleID']:
-            return True
-    return False
     
 # to insert the attraction point in the route
 def insertIntoRoute(point, route_, route, plan):
@@ -238,8 +220,9 @@ def findHotelList(currentLocationName):
     hotelList.append(api.findHotel(currentLocationName))
     return hotelList
 
+
 # to find the next attraction point
-def nextPoint(currentPoint, country, routeList, type_='tourist_attraction'):
+def nextPoint(currentPoint, country, routeList, type_='tourist_attraction', *check):
     block, repeat, done, wordBlock = False, False, False, False
     location = api.findLocation(currentPoint)
     nextList = api.findNextAttraction(currentPoint, location['lat'], location['lng'], type_)
@@ -249,6 +232,7 @@ def nextPoint(currentPoint, country, routeList, type_='tourist_attraction'):
         while not done:
             next_ = nextList.pop(-1)
             temp = next_
+
             # to check the next point is in black list or repeated or not
             if len(blockPoint) > 0:
                 for point in blockPoint:
@@ -324,13 +308,12 @@ def checkExist(point, plan):
 
 # to setup the start time of the attraction
 def setStartTime(routeList):
-    a = routeList[-1].startTime + datetime.timedelta(seconds=routeList[-1].duration)
-    return a
+   return routeList[-1].startTime + datetime.timedelta(seconds=routeList[-1].duration)
 
 # to find the route between current point and the next point
 # the nextPoint can be attraction or nextPoint
 # the type for the point which is in start, attraction, hotel, end, transport
-def findRouteBetween(day=int, nextPoint=dict, routeList=list, plan=Plan.Plan, *last, type_=1):
+def findRouteBetween(day=int, nextPoint=dict, routeList=list, plan=Plan.Plan, type_=1):
     try:
         tempRoute = api.genRoute(routeList[-1].name, nextPoint['name'])
         if tempRoute != "":
@@ -346,11 +329,6 @@ def findRouteBetween(day=int, nextPoint=dict, routeList=list, plan=Plan.Plan, *l
             point = Plan.Point(routeList[0].day, currentAttractionID()+1, nextPoint['googleID'], 
                             nextPoint['name'], len(routeList)+2, nextPoint['duration'], 
                             startTime, type_)
-            if len(last) != 0:
-                point = routeList[0]
-                point.setStartTime(startTime)
-                point.setType(3)
-                # point.setPlaceOrder(len(routeList)+2)
             return {'point': point, 'route': route}
         else:
             raise IndexError
@@ -437,31 +415,67 @@ def storeIn(googleID, list_):
 # to catch the point in the day until the time is over 1830
 # this method will go all attraction which is in must-Go list first
 # if there is no attraction in must-Go list, call loopPointInDay()
-def loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan):
-    endPointFinished = True
-    startTime = setStartTime(routeList)
-    while startTime < datetime.time(18, 30):
-        if len(mustGoList) > 0:
-            nextPoint = mustGoList.pop()
-            temp = findRouteBetween(nextPoint, routeList, plan)
-            routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-            startTime = setStartTime(routeList)
-            
-        elif len(anyDayMustGoList) > 0:
-            nextPoint = anyDayMustGoList.pop()
-            temp = findRouteBetween(nextPoint, routeList, plan)
-            routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-            startTime = setStartTime(routeList)
-            
-        else:
-            routeList = loopPointInDay(day, startTime, plan, routeList)
-            endPointFinished = False
+def loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan, day, startTime):
+    startDate = datetime.datetime(plan.startDate.year, plan.startDate.month, 
+                                  plan.startDate.day, hour=18, minute=30)
+    startDate = startDate + datetime.timedelta(days = day-1)
+    while startTime < startDate:
+        usedMustGo = False
+        usedAnyGo = False
+        mI = 0                  # must go list index
+        aI = 0                  # any day go list index
+        # set the nextPoint = nextPoint()
+        nextPoint_ = nextPoint(routeList[-1].name, plan.country, routeList)
+        # if any day must go place is match, use it
+        for anyday in anyDayMustGoList:
+            print(anyday)
+            print(startTime)
+            # print(startTime - anyday['startTime'])
+            # print(startTime - anyday['startTime'] < datetime.timedelta(seconds = 3600))
+            if anyday['startTime'] == '':
+                nextPoint_ = anyday
+                break
+            elif startTime < anyday['startTime']:
+                nextPoint_ = anyday
+                usedAnyGo = True
+                break
+            else:
+                aI = aI + 1
+        # if must go place is match, use it
+        for mustGo in mustGoList:
+            print(mustGo)
+            print(startTime)
+            # print(startTime - mustGo['startTime'])
+            # print(startTime - mustGo['startTime'] < datetime.timedelta(seconds = 3600))
+            if mustGo['startTime'] == '':
+                nextPoint_ = mustGo
+                break
+            elif startTime < mustGo['startTime']:
+                nextPoint_ = mustGo
+                usedMustGo = True
+                break
+            else:
+                mI = mI + 1
         
-    if endPointFinished:
-        hotel = findHotelList(routeList[-1].name).pop()
-        temp = findRouteBetween(hotel, routeList, plan, type_=3)
-        temp['point'].setDuration(0)
-        routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
+        # remove the point in list
+        if usedMustGo:
+            mustGoList.pop(mI)
+        elif usedAnyGo:
+            anyDayMustGoList.pop(aI)
+
+        temp = findRouteBetween(day, nextPoint_, routeList, plan)
+        if temp['route'] == '':
+            blockPoint.append(nextPoint_)
+        else:
+            routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
+            print('found next point: ',temp['point'].name)
+            went.append(temp['point'])
+            startTime = setStartTime(routeList)
+
+    # find the hotel
+    nextPoint_ = nextPoint(routeList[-1].name, plan.country, routeList, 'lodging')
+    temp = findRouteBetween(day, nextPoint_, routeList, plan_, type_=2)
+    routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
     return routeList
 
 # to store the original attraction in route
@@ -478,45 +492,6 @@ def getOriginalRoute(plan):
             originalList.append(tempPoint)
             went.append(tempPoint)
     return originalList
-    
-# to catch the point in the day until the time is over 1830
-# and exclude the original's attraction
-# def reLoopPointInDay(day, startTime, plan, routeList, originalList):
-#     startDate = datetime.datetime(plan.startDate.year, plan.startDate.month, 
-#                                   plan.startDate.day, hour=18, minute=30)
-#     startDate = startDate + datetime.timedelta(days = day-1)
-#     while startTime < startDate:
-#         nextPoint_ = nextPoint(routeList[-1].name, plan.country, routeList)
-#         temp = findRouteBetween(day, nextPoint_, routeList, plan)
-#         routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-#         print('found next point: ',temp['point'].name)
-#         startTime = setStartTime(routeList)
-        
-#         # if startTime > datetime.time(12, 0) and startTime < datetime.time(16,0) and not havelunch:
-#         #     routeList = golunch(routeList, plan)
-#         #     startTime = setStartTime(routeList)
-#         #     havelunch = True
-
-#     # find restaurant for dinner
-#     # startTime = setStartTime(routeList)
-#     # restaurant = findRestaurantList(routeList[-1].name).pop()
-#     # temp = findRouteBetween(restaurant, routeList)
-#     # routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-#     # startTime = setStartTime(routeList)
-
-#     # go back hotel
-#     if isHotel(routeList[0].name):
-#         address = api.findPlaceBy(routeList[0].googleID)['formatted_address']
-#         nextPoint_ = {'googleID': routeList[0].googleID, 'address': address,
-#                     'name': routeList[0].name, 'duration': routeList[0].duration}
-#         temp = findRouteBetween(day, routeList[0], routeList, plan_, type_=2)
-#         routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-#     else:
-#         hotel = findHotelList(routeList[-1].name).pop()
-#         temp = findRouteBetween(day, hotel, routeList, plan_, type_=2)
-#         routeList = insertIntoRoute(temp['point'], temp['route'], routeList, plan_)
-
-#     return routeList
 
 # to update the route into plan content
 def updatePlanContent(routeList, attractionList, plan):
@@ -587,6 +562,62 @@ def stateOneAndThree(plan):
         updatePlanContent(routeList, attractionList, plan_)
 
 
+def isAirport(mustGo = dict):
+    isAirport = False
+    query = 'select type from attraction_type where id = %d' % (mustGo['attractionID'])
+    cursor.execute(query)
+    types = cursor.fetchall()
+    for type_ in types:
+        if 'airport' in type_:
+            isAirport = True
+            break
+    return isAirport
+
+def convertToStartTime(mustGo, plan):
+    hour = mustGo[-4].split(":")[0]
+    minute = mustGo[-4].split(":")[1]
+    startTime = datetime.datetime(plan.startDate.year, plan.startDate.month, plan.startDate.day+mustGo[1]-1, 
+                                  hour=int(hour), minute=int(minute))
+    return startTime
+
+def getAllAssignedAttraction(plan):
+    # store anyday-go-attraction into anydayMustGoList
+    query = 'select * from plan_content where day = 0 and planID = %d' % (plan_.planID)
+    cursor.execute(query)
+    anydays = cursor.fetchall()
+    for anyday in anydays:
+        query = 'select googleID, name from attraction where attractionID = %d' % (anyday[2])
+        cursor.execute(query)
+        temp = cursor.fetchall()[0]
+        googleID = temp[0]
+        name = temp[1]
+        startTime = convertToStartTime(anyday, plan)
+        duration = anyday[-5]
+        if anyday[-5] == None:
+            duration = crawler.crawlDruation(name)
+        anyDayMustGoList.append({'day':anyday[1], 'attractionID':anyday[2], 'duration': duration, 'startTime':startTime,
+                                    'add_by': anyday[-2], 'googleID':googleID, 'name':name})
+    # store assigned-day-must-go into to mustGoList
+    query = 'select * from plan_content where day <> 0 and planID = %d' % (plan_.planID)
+    cursor.execute(query)
+    mustGos = cursor.fetchall()
+    for mustGo in mustGos:
+        query = 'select googleID, name, duration from attraction where attractionID = %d' % (mustGo[2])
+        cursor.execute(query)
+        temp = cursor.fetchall()[0]
+        googleID = temp[0]
+        name = temp[1]
+        duration = mustGo[5]
+        if duration == None:
+            duration = temp[2]
+
+        startTime = ""
+        if mustGo[6] != None:
+            startTime = convertToStartTime(mustGo, plan)
+
+        mustGoList.append({'day':mustGo[1], 'attractionID':mustGo[2], 'duration': duration, 'startTime':startTime, 
+                            'add_by': mustGo[-2], 'googleID':googleID, 'name':name})
+
 while True:
     try:
         connection = mysql.connector.connect(       # to create the database connection
@@ -596,8 +627,8 @@ while True:
             database="hochilltrip",
             buffered=True)
         cursor = connection.cursor()                # create the cursor for database
-        # query = "select * from plan where state = 1 or state = 3"
-        query = "select * from plan where planID = 11"
+        query = "select * from plan where state = 1 or state = 3"
+        # query = "select * from plan where planID = 21"
         cursor.execute(query)
         toDoPlan = cursor.fetchall()
         print("waiting for create plan...")
@@ -623,40 +654,48 @@ while True:
                 
                 # there are some must-go attraction saved in the plan which is first time require to gen route
                 elif len(planContent) != 0 and plan_.state == 1:
-                    # store point in class attraction
-                    for point in planContent:
-                        if point[1] == day and not point[3]:
-                            mustGoList = storeIn(point[3], mustGoList)
-                        elif point[1] == 0 and not point[3]:
-                            anyDayMustGoList = storeIn(point[3], anyDayMustGoList)
-                        elif point[1] == day and not point[2]:
-                            query = "select googleId from attraction where attractionID = %d" %(point[2])
-                            cursor.execute(query)
-                            googleID = cursor.fetchall()[0]
-                            mustGoList = storeIn(googleID, mustGoList)
-                        elif point[1] == 0 and not point[2]:
-                            query = "select googleId from attraction where attractionID = %d" %(point[2])
-                            cursor.execute(query)
-                            googleID = cursor.fetchall()[0]
-                            anyDayMustGoList = storeIn(point[3], anyDayMustGoList)
+                    # get all assigned point
+                    getAllAssignedAttraction(plan_)
+
                     # there are some place must be go
                     for day in range(1,plan_.duration+1):
                         # go all must-go place first, then gen the rest
                         routeList = initialDayOfDuration(plan_, day)['routeList']
-                        startTime = datetime.time(9, 0)
                         print('start to gen day %d' % (day))
-                        if len(mustGoList) != 0 and day == 1:
-                            attraction = mustGoList.pop()
-                            point = Plan.Point(day, attraction.attractionID, attraction.googleID, 
-                                            attraction.name, len(routeList)+1, attraction.duration, 
-                                            startTime, 1)
-                            routeList.append(point)
-                            routeList = loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan_)
-                            endOfday = routeList[-1]
-                        else:
-                            routeList = initialDay(day, endOfday, plan_)
-                            routeList = loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan_)
-                            endOfday = routeList[-1]
+                        if day == 1:
+                            if len(mustGoList) > 0 or len(anyDayMustGoList) > 0:
+                                startTime = datetime.datetime(plan_.startDate.year,plan_.startDate.month, plan_.startDate.day, 
+                                                              hour=9, minute=0)
+                                if isAirport(mustGoList[0]):
+                                    startTime = convertToStartTime(mustGoList, plan_)
+                                    attraction = mustGoList.pop()
+                                    point = Plan.Point(day, attraction['attractionID'], attraction['googleID'], 
+                                                attraction['name'], len(routeList)+1, attraction['duration'], 
+                                                startTime, 1)
+                                    routeList[0]=point
+                                else:
+                                    init = initialDay1(day, routeList, plan_, 1)
+                                    routeList = init['routeList']
+                                    startTime = init['startTime']                                    
+                                routeList = loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan_, day, startTime)
+                                endOfday = routeList[-1]
+                                for a in routeList:
+                                    print(a)
+                        else:       # the day is not 1
+                            if len(mustGoList) > 0 or len(anyDayMustGoList) > 0:
+                                routeList = initialDay(day, endOfday, plan_)
+                                routeList = loopMustGoInDay(mustGoList, anyDayMustGoList, routeList, plan_, day, startTime)
+                                endOfday = routeList[-1]
+                                for a in routeList:
+                                    print(a)
+                            else:
+                                routeList = initialDay(day, endOfday, plan)
+                                startTime = setStartTime(routeList)
+                                routeList = loopPointInDay(day, startTime, plan, routeList)
+                                endOfday = routeList[-1]
+                                for a in routeList:
+                                    print(a)
+
                             # if last day, then go back airport
                             if day == plan_.duration:
                                 startTime = setStartTime(routeList)
@@ -670,8 +709,11 @@ while True:
                                 point = Plan.Point(day, currentAttractionID()+1, airport['place_id'], 
                                                    airport['name'], len(routeList)+1, duration, 
                                                    startTime, 3)
-
+                            
                         print("day %d finished" % (day))
+                        query = 'delete from plan_content where planID = %d and day = ' % (plan_.planID, day)
+                        cursor.execute(query)
+                        connection.commit()
                         updatePlanContent(routeList, attractionList, plan_)
                 
                 # ther are the plan which is want to re-gen the route

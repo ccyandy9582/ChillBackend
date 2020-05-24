@@ -7,6 +7,7 @@ import requests
 
 class API():
     def __init__(self, transportMode):
+        # self.api_key = "AIzaSyDog7hXlhQFMMuvI4PWVeMnhG_R_v8oFsk"
         self.api_key = "AIzaSyBSBBEmsLVTTCM3vXMV6aUB6uw50F4BPQk"
         self.client = googlemaps.Client(key=self.api_key)
         self.transportMode = transportMode
@@ -18,7 +19,7 @@ class API():
     def findPhoneNum(self, googleID):
         try:
             parms = (googleID, self.api_key)
-            string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s&language=en&fields=name,rating,international_phone_number&key=%s" % parms
+            string = "https://maps.googleapis.com/maps/api/place/details/json?place_id=%s&language=en&fields=name,rating,international_phone_number,place_id&key=%s" % parms
             json = requests.get(string).json()
             phone = ""
             if json['status'] == 'OK':
@@ -26,7 +27,7 @@ class API():
                     phone = json['result']['international_phone_number']
             return phone
         except KeyError as e:
-            print(e.args[0])
+            print(e)
             return ""
 
     def findAttraction(self, placeName, type_='tourist_attraction'):
@@ -39,9 +40,9 @@ class API():
         return info
 
     def findPlaceID(self, name):
-        location = self.findLocation(name)
-        parms = (location['lat'], location['lng'], self.api_key)
-        string = 'https://maps.googleapis.com/maps/api/geocode/json?latlng=%f,%f&key=%s' % parms
+        # location = self.findLocation(name)
+        parms = (name, self.api_key)
+        string = 'https://maps.googleapis.com/maps/api/geocode/json?address=%s&key=%s' % parms
         json = requests.get(string).json()
         placeid = ""
         if json['status'] == 'OK':
@@ -95,7 +96,7 @@ class API():
         # 'geometry/location/lat'
         # address = self.client.reverse_geocode(self.findLocation(googleID))[0]['formatted_address']
         name = self.findNameBy(googleID)
-        fields = 'place_id, photos, name, geometry/location, formatted_address, rating, types'
+        fields = 'place_id,photos,name,geometry/location,formatted_address,rating,types'
         parms = (name, fields, self.api_key)
         string = 'https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=%s&inputtype=textquery&fields=%s&language=en&key=%s' % parms
         json = requests.get(string).json()
@@ -158,9 +159,9 @@ class API():
                     break
         
 
-api = API('driving')
+# api = API('driving')
 # print(api.findHotel('愉景灣觀光馬車'))
-print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
+# print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
 # print(api.findPlaceID('Hong Kong Disneyland'))
 # a= api.findAttraction("The Harbourview")
 # print(a)
@@ -176,3 +177,5 @@ print(api.findPlaceBy('ChIJncZGzPPiAzQRnjaSGIKQ9fk'))
 # print(api.findPhoneNum('ChIJ7yglkB6oQjQRbTrDqneWpAA'))
 # print(api.findAttraction('taiwan', 'airport'))
 # print(api.genRoute('藝奇新日本料理桃園南華店', 'I Do Motel', 'driving'))
+
+

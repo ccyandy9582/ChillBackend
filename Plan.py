@@ -36,8 +36,8 @@ class Point():
         self.placeOrder = int(placeOrder)
         self.startTime = startTime
         self.duration = int(duration)
-        self.setType(type_)  # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
-        self.addBy = addBy
+        self.setType(type_)     # 0:start, 1:attraction, 2:hotel, 3:end, 4:transport
+        self.addBy = addBy      # 0:user, 1:generator, 2:remove
 
     def setDuration(self, duration):
         self.duration = duration
