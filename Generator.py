@@ -586,17 +586,18 @@ def getAllAssignedAttraction(plan):
     cursor.execute(query)
     anydays = cursor.fetchall()
     for anyday in anydays:
-        query = 'select googleID, name from attraction where attractionID = %d' % (anyday[2])
-        cursor.execute(query)
-        temp = cursor.fetchall()[0]
-        googleID = temp[0]
-        name = temp[1]
-        startTime = convertToStartTime(anyday, plan)
-        duration = anyday[-5]
-        if anyday[-5] == None:
-            duration = crawler.crawlDruation(name)
-        anyDayMustGoList.append({'day':anyday[1], 'attractionID':anyday[2], 'duration': duration, 'startTime':startTime,
-                                    'add_by': anyday[-2], 'googleID':googleID, 'name':name})
+        if anyday[2] != None:
+            query = 'select googleID, name from attraction where attractionID = %d' % (anyday[2])
+            cursor.execute(query)
+            temp = cursor.fetchall()[0]
+            googleID = temp[0]
+            name = temp[1]
+            startTime = convertToStartTime(anyday, plan)
+            duration = anyday[-5]
+            if anyday[-5] == None:
+                duration = crawler.crawlDruation(name)
+            anyDayMustGoList.append({'day':anyday[1], 'attractionID':anyday[2], 'duration': duration, 'startTime':startTime,
+                                        'add_by': anyday[-2], 'googleID':googleID, 'name':name})
     # store assigned-day-must-go into to mustGoList
     query = 'select * from plan_content where day <> 0 and planID = %d' % (plan_.planID)
     cursor.execute(query)
@@ -711,7 +712,7 @@ while True:
                                                    startTime, 3)
                             
                         print("day %d finished" % (day))
-                        query = 'delete from plan_content where planID = %d and day = ' % (plan_.planID, day)
+                        query = 'delete from plan_content where planID = %d and day = %d' % (plan_.planID, day)
                         cursor.execute(query)
                         connection.commit()
                         updatePlanContent(routeList, attractionList, plan_)
