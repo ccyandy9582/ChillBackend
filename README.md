@@ -3,7 +3,6 @@
 * The backend for the HO_CHILL_TRIP project  
 * Communicate with front-end through database  
 * Responsible to generate the plan  
-* Responsible to send the confirmation mail to newbie  
 ________________________________________________________________________________________________________________
 ># Rundown  
 
@@ -41,7 +40,7 @@ ________________________________________________________________________________
 - [x] 2. fix place duplicate (remember set bigger radius)  
 - [x] 3. generate plan (nothing)  
 - [x] 4. generate plan (re-gen)  
-- [ ] 5. generate plan (must-go place(s) included)  
+- [x] 5. generate plan (must-go place(s) included)  
 - [x] 6. add driving route  
 - [x] 7. update existing attraction
   
@@ -50,3 +49,4 @@ ________________________________________________________________________________
 - [ ] 2. other冇咁重要嘅 backend, like send email/ delete useless things  
 - [x] 3. duration of hotel should be 0
 ________________________________________________________________________________________________________________
+
